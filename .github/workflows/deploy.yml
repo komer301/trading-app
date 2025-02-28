@@ -4,37 +4,28 @@ on:
   push:
     branches:
       - main
-  pull_request_target: # Ensures secrets work in PRs safely
-    branches:
-      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production # Ensures secrets are available
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set Up SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | tr ' ' '\n' > private_key.pem
-          chmod 600 private_key.pem
-          echo "Key Length: $(wc -c < private_key.pem)"  # Debug
-
-      - name: Add SSH Host Key (Bypass Verification)
+      - name: Setup SSH Key and Config
         run: |
           mkdir -p ~/.ssh
+          # Save the SSH key
+          echo "${{ secrets.EC2_SSH_KEY }}" | tr ' ' '\n' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Configure SSH to bypass host key verification
           echo "Host ${{ secrets.EC2_HOST }}
-                StrictHostKeyChecking no
-                UserKnownHostsFile=/dev/null" > ~/.ssh/config
+          StrictHostKeyChecking no
+          UserKnownHostsFile=/dev/null" > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
-      - name: Debug SSH Connection
-        run: ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_HOST }}
-
-      - name: SSH into EC2 and deploy
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
