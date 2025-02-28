@@ -1,4 +1,4 @@
-name: Deploy to EC2 via SCP
+name: Deploy to EC2 via SCP1
 
 on:
   push:
