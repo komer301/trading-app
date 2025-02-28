@@ -1,4 +1,4 @@
-name: Deploy to EC2 via SCP1
+name: Deploy to EC2
 
 on:
   push:
@@ -13,12 +13,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Copy trading-app folder to EC2
-        uses: garygrossgarten/github-action-scp@release
+      - name: Set up SSH Key and Config
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "Host ${{ secrets.EC2_HOST }}
+          StrictHostKeyChecking no
+          UserKnownHostsFile=/dev/null" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Debug SSH Key Setup
+        run: |
+          echo "Listing ~/.ssh directory:"
+          ls -la ~/.ssh
+          echo "Displaying first 10 lines of id_rsa:"
+          head -n 10 ~/.ssh/id_rsa
+          echo "Key fingerprint:"
+          ssh-keygen -lf ~/.ssh/id_rsa
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
         with:
-          local: trading-app
-          remote: /home/ec2-user/trading-app
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
-          privateKey: ${{ secrets.EC2_SSH_KEY }}
-          recursive: true
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/trading-app
+            git pull origin main
+            docker stop fastapi-orders || true
+            docker rm fastapi-orders || true
+            docker build -t fastapi-orders .
+            docker run -d -p 8000:8000 fastapi-orders
