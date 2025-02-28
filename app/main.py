@@ -5,7 +5,7 @@ from app.database import lifespan, get_session
 from app.models import Order, OrderCreate
 from app.crud import create_order, read_orders
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="Trading API",lifespan=lifespan)
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
