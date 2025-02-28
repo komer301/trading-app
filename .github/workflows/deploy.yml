@@ -13,18 +13,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Decode SSH Key
+      - name: Decode and Set Up SSH Key
         run: |
           echo "${{ secrets.EC2_SSH_KEY_BASE64 }}" | base64 --decode > private_key.pem
           chmod 600 private_key.pem
+          ls -lah private_key.pem  # Check if the file is created properly
+          echo "Key Length: $(wc -c < private_key.pem)"  # Debugging
 
-      - name: Debug SSH Key
+      - name: Add SSH Host Key (Bypass Verification)
         run: |
-          echo "Key Length: $(wc -c < private_key.pem)"
-          ls -lah private_key.pem
+          mkdir -p ~/.ssh
+          echo "Host ${{ secrets.EC2_HOST }}
+                StrictHostKeyChecking no
+                UserKnownHostsFile=/dev/null" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       - name: Debug SSH Connection
-        run: ssh -vvv -i private_key.pem ec2-user@${{ secrets.EC2_HOST }}
+        run: ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_HOST }}
 
       - name: SSH into EC2 and deploy
         uses: appleboy/ssh-action@v0.1.4
