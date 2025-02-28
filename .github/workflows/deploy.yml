@@ -1,9 +1,10 @@
-name: Deploy to EC2
+name: Deploy to VPS
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -13,33 +14,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Debug: List SSH Directory and Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "Listing ~/.ssh directory:"
+          ls -la ~/.ssh
+          echo "Displaying first 10 lines of id_rsa:"
+          head -n 10 ~/.ssh/id_rsa || echo "Key not set yet"
+
       - name: Set up SSH Key and Config
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          # Save the SSH key; ensure your private key is in proper PEM format with correct line breaks
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo "Host ${{ secrets.EC2_HOST }}
+          echo "Host ${{ secrets.SSH_HOST }}
           StrictHostKeyChecking no
           UserKnownHostsFile=/dev/null" > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
-      - name: Debug SSH Key Setup
-        run: |
-          echo "Listing ~/.ssh directory:"
-          ls -la ~/.ssh
-          echo "Displaying first 10 lines of id_rsa:"
-          head -n 10 ~/.ssh/id_rsa
-          echo "Key fingerprint:"
-          ssh-keygen -lf ~/.ssh/id_rsa
-
-      - name: Deploy to EC2 via SSH
+      - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          # If your key is still passphrase-protected, add:
           script: |
-            cd /home/ec2-user/trading-app
+            whoami
+            cd /home/${{ secrets.SSH_USER }}/trading-app
             git pull origin main
             docker stop fastapi-orders || true
             docker rm fastapi-orders || true
