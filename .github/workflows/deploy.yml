@@ -12,19 +12,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Debug Secrets
-        run: echo "${{ secrets.EC2_SSH_KEY }}" | tr '\n' ' ' | cut -c1-100
-      - name: Fix SSH Key Permissions
+
+      - name: Decode SSH Key
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          echo "${{ secrets.EC2_SSH_KEY_BASE64 }}" | base64 --decode > private_key.pem
           chmod 600 private_key.pem
+
+      - name: Debug SSH Key
+        run: |
+          echo "Key Length: $(wc -c < private_key.pem)"
+          ls -lah private_key.pem
+
+      - name: Debug SSH Connection
+        run: ssh -vvv -i private_key.pem ec2-user@${{ secrets.EC2_HOST }}
 
       - name: SSH into EC2 and deploy
         uses: appleboy/ssh-action@v0.1.4
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.EC2_SSH_KEY_BASE64 }}
           script: |
             cd trading-app
             git pull origin main
