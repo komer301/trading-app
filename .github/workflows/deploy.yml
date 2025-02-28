@@ -19,9 +19,8 @@ jobs:
 
       - name: Set Up SSH Key
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | sed 's/\\n/\n/g' > private_key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" | awk '{gsub(" ", "\n")}1' > private_key.pem
           chmod 600 private_key.pem
-          echo "Key Length: $(wc -c < private_key.pem)"  # Debugging
 
       - name: Add SSH Host Key (Bypass Verification)
         run: |
