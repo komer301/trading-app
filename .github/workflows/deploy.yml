@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - main
+  pull_request_target: # Ensures secrets work in PRs safely
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production # Ensures secrets are available
 
     steps:
       - name: Checkout code
@@ -15,8 +19,9 @@ jobs:
 
       - name: Set Up SSH Key
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" | sed 's/\\n/\n/g' > private_key.pem
           chmod 600 private_key.pem
+          echo "Key Length: $(wc -c < private_key.pem)"  # Debugging
 
       - name: Add SSH Host Key (Bypass Verification)
         run: |
